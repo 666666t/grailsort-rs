@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-	use crate::sortable::Sortable;
     use crate::grailpair::GrailPair;
-	use crate::grailsort::*;
+    use crate::grailsort::*;
+    use crate::sortable::Sortable;
     use rand::{thread_rng, Rng};
 
     #[test]
@@ -214,12 +214,16 @@ mod tests {
                 })
                 .collect();
 
-            let (keys_found,ideal_keys,_key_len,_block_len) = match bufferless_common_sort_to_collect(&mut set, len) {
-                GrailStage::Collect {keys_found, ideal_keys, key_len, block_len} => {
-                    (keys_found, ideal_keys, key_len, block_len)
-                },
-                _ => panic!("No call other than collect_keys should have returned"),
-            };
+            let (keys_found, ideal_keys, _key_len, _block_len) =
+                match bufferless_common_sort_to_collect(&mut set, len) {
+                    GrailStage::Collect {
+                        keys_found,
+                        ideal_keys,
+                        key_len,
+                        block_len,
+                    } => (keys_found, ideal_keys, key_len, block_len),
+                    _ => panic!("No call other than collect_keys should have returned"),
+                };
 
             for i in 1..keys_found {
                 assert!(
@@ -243,6 +247,149 @@ mod tests {
         }
     }
 
+    #[test]
+    fn build_blocks_random_sizes_random_values() {
+        for _ in 0..100 {
+            let mut rng = thread_rng();
+            let len = rng.gen_range(2, 262144);
+            let mut set: Vec<GrailPair> = (0..len)
+                .map(|x| GrailPair {
+                    key: rng.gen_range(0, len as isize),
+                    value: x as isize,
+                })
+                .collect();
+            let (_strategy, _keys_found, _key_len, buffer_end, subarray_len, _ideal_buffer, _block_len) =
+                match bufferless_common_sort_to_build(&mut set, len) {
+                    GrailStage::Build {
+                        strategy,
+                        keys_found,
+                        key_len,
+                        buffer_end,
+                        subarray_len,
+                        ideal_buffer,
+                        block_len,
+                    } => (
+                        strategy,
+                        keys_found,
+                        key_len,
+                        buffer_end,
+                        subarray_len,
+                        ideal_buffer,
+                        block_len,
+                    ),
+                    _ => panic!("No call other than build_blocks should have returned"),
+                };
+            let mut cursor = buffer_end + 1;
+            while cursor < len {
+                if (cursor - buffer_end) % subarray_len != 0 {
+                    assert!(
+                        set[cursor] >= set[cursor - 1],
+                        "Built Fragment Out Of Order: {:?}, {:?}, ({}, {})",
+                        set[cursor - 1],
+                        set[cursor],
+                        cursor - 1,
+                        cursor
+                    );
+                    if set[cursor] == set[cursor - 1] {
+                        assert!(
+                            set[cursor].value > set[cursor - 1].value,
+                            "Buit Fragment Is Unstable!: {:?}, {:?}, ({}, {})",
+                            set[cursor - 1],
+                            set[cursor],
+                            cursor - 1,
+                            cursor
+                        );
+                    }
+                }
+                cursor += 1;
+            }
+        }
+    }
+
+    #[test]
+    fn combine_blocks_random_sizes_random_values() {
+        for _ in 0..100 {
+            let mut rng = thread_rng();
+            let len = rng.gen_range(2, 262144);
+            let mut set: Vec<GrailPair> = (0..len)
+                .map(|x| GrailPair {
+                    key: rng.gen_range(0, len as isize),
+                    value: x as isize,
+                })
+                .collect();
+            let buffer_end = match bufferless_common_sort_to_combine(&mut set, len) {
+                GrailStage::Combine { buffer_end } => buffer_end,
+                _ => panic!("No call other than build_blocks should have returned"),
+            };
+
+            let mut cursor = buffer_end + 1; 
+            while cursor < len {
+                assert!(
+                    set[cursor] >= set[cursor - 1],
+                    "Built Fragment Out Of Order: {:?}, {:?}, ({} {})",
+                    set[cursor - 1],
+                    set[cursor],
+                    cursor - 1,
+                    cursor
+                );
+                if set[cursor] == set[cursor - 1] {
+                    assert!(
+                        set[cursor].value > set[cursor - 1].value,
+                        "Built Fragment Is Unstable!: {:?}, {:?}, ({}, {})",
+                        set[cursor - 1],
+                        set[cursor],
+                        cursor - 1,
+                        cursor
+                    );
+                }
+                cursor += 1;
+            }
+        }
+    }
+
+    #[test]
+    fn final_insertion_random_sizes_random_values() {
+        for _ in 0..100 {
+            let mut rng = thread_rng();
+            let len = rng.gen_range(2, 262144);
+            let mut set: Vec<GrailPair> = (0..len)
+                .map(|x| GrailPair {
+                    key: rng.gen_range(0, len as isize),
+                    value: x as isize,
+                })
+                .collect();
+            let buffer_end = match bufferless_common_sort_to_final_insert(&mut set, len) {
+                GrailStage::FinalInsert { buffer_end } => buffer_end,
+                _ => panic!("No call other than build_blocks should have returned"),
+            };
+
+            let mut cursor = 1; 
+            while cursor < buffer_end {
+                assert!(
+                    set[cursor] >= set[cursor - 1],
+                    "Built Fragment Out Of Order: {:?}, {:?}, ({} {})",
+                    set[cursor - 1],
+                    set[cursor],
+                    cursor - 1,
+                    cursor
+                );
+                if set[cursor] == set[cursor - 1] {
+                    assert!(
+                        set[cursor].value > set[cursor - 1].value,
+                        "Built Fragment Is Unstable!: {:?}, {:?}, ({}, {})",
+                        set[cursor - 1],
+                        set[cursor],
+                        cursor - 1,
+                        cursor
+                    );
+                }
+                cursor += 1;
+            }
+        }
+    }
+
+    //NOTE: There is no test for the final grail_lazy_merge call,
+    //as verifying such is equivalent to verifying the actual sort, which every other test does.
 
     #[allow(dead_code)]
     enum GrailStage {
@@ -280,7 +427,6 @@ mod tests {
 
     #[allow(dead_code)]
     fn bufferless_common_sort_to_collect<T: Sortable>(set: &mut [T], length: usize) -> GrailStage {
-        
         let mut block_len = 1;
         while block_len * block_len < length {
             block_len *= 2;
@@ -291,7 +437,7 @@ mod tests {
         let ideal_keys = key_len + block_len;
 
         let keys_found = grail_collect_keys(set, 0, length, ideal_keys);
-        
+
         GrailStage::Collect {
             keys_found,
             ideal_keys,
@@ -299,15 +445,19 @@ mod tests {
             block_len,
         }
     }
-    
+
     #[allow(dead_code)]
     fn bufferless_common_sort_to_build<T: Sortable>(set: &mut [T], length: usize) -> GrailStage {
-        let (keys_found, ideal_keys, mut key_len, mut block_len) = match bufferless_common_sort_to_collect(set, length) {
-            GrailStage::Collect{keys_found, ideal_keys, key_len, block_len} => {
-                (keys_found, ideal_keys, key_len, block_len)
-            },
-            _ => panic!("Incorrect stage encountered during grailsort test execution"),
-        };
+        let (keys_found, ideal_keys, mut key_len, mut block_len) =
+            match bufferless_common_sort_to_collect(set, length) {
+                GrailStage::Collect {
+                    keys_found,
+                    ideal_keys,
+                    key_len,
+                    block_len,
+                } => (keys_found, ideal_keys, key_len, block_len),
+                _ => panic!("Incorrect stage encountered during grailsort test execution"),
+            };
 
         let ideal_buffer;
         let strategy;
@@ -326,7 +476,7 @@ mod tests {
                     block_len: 0,
                 };
             } else {
-                key_len = block_len; 
+                key_len = block_len;
                 block_len = 0;
 
                 ideal_buffer = false;
@@ -365,12 +515,27 @@ mod tests {
 
     #[allow(dead_code)]
     fn bufferless_common_sort_to_combine<T: Sortable>(set: &mut [T], length: usize) -> GrailStage {
-        let (_strategy, keys_found, key_len, buffer_end, mut subarray_len, ideal_buffer, block_len) = match bufferless_common_sort_to_build(set, length) {
-            GrailStage::Build{strategy, keys_found, key_len, buffer_end, subarray_len, ideal_buffer, block_len} => {
-                (strategy, keys_found, key_len, buffer_end, subarray_len, ideal_buffer, block_len)
-            },
-            _ => panic!("Incorrect stage encountered during grailsort test execution"),
-        };
+        let (_strategy, keys_found, key_len, buffer_end, mut subarray_len, ideal_buffer, block_len) =
+            match bufferless_common_sort_to_build(set, length) {
+                GrailStage::Build {
+                    strategy,
+                    keys_found,
+                    key_len,
+                    buffer_end,
+                    subarray_len,
+                    ideal_buffer,
+                    block_len,
+                } => (
+                    strategy,
+                    keys_found,
+                    key_len,
+                    buffer_end,
+                    subarray_len,
+                    ideal_buffer,
+                    block_len,
+                ),
+                _ => panic!("Incorrect stage encountered during grailsort test execution"),
+            };
 
         while length - buffer_end > 2 * subarray_len {
             subarray_len *= 2;
@@ -399,31 +564,33 @@ mod tests {
                 scrolling_buffer,
             );
         }
-        GrailStage::Combine {
-            buffer_end,
-        }
+        GrailStage::Combine { buffer_end }
     }
 
     #[allow(dead_code)]
-    fn bufferless_common_sort_to_final_insert<T: Sortable>(set: &mut [T], length: usize) -> GrailStage {
+    fn bufferless_common_sort_to_final_insert<T: Sortable>(
+        set: &mut [T],
+        length: usize,
+    ) -> GrailStage {
         let buffer_end = match bufferless_common_sort_to_combine(set, length) {
-            GrailStage::Combine{buffer_end} => buffer_end,
+            GrailStage::Combine { buffer_end } => buffer_end,
             _ => panic!("Incorrect stage encountered during grailsort test execution"),
         };
         grail_insertion_sort(set, 0, buffer_end);
-        GrailStage::FinalInsert{buffer_end}
+        GrailStage::FinalInsert { buffer_end }
     }
 
     #[allow(dead_code)]
-    fn bufferless_common_sort_to_final_merge<T: Sortable>(set: &mut [T], length: usize) -> GrailStage {
+    fn bufferless_common_sort_to_final_merge<T: Sortable>(
+        set: &mut [T],
+        length: usize,
+    ) -> GrailStage {
         let buffer_end = match bufferless_common_sort_to_final_insert(set, length) {
-            GrailStage::FinalInsert{buffer_end} => buffer_end,
+            GrailStage::FinalInsert { buffer_end } => buffer_end,
             _ => panic!("Incorrect stage encountered during grailsort test execution"),
         };
         grail_lazy_merge(set, 0, buffer_end, length - buffer_end);
-        GrailStage::FinalLazy {
-            buffer_end,
-        }
+        GrailStage::FinalLazy { buffer_end }
     }
 
     fn verify_sort(set: &[GrailPair]) {

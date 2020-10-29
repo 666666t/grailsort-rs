@@ -1371,7 +1371,6 @@ pub fn grail_common_sort<T: Sortable>(
         let ideal_keys = key_len + block_len;
 
         let keys_found = grail_collect_keys(set, start, length, ideal_keys);
-        println!("{:?}; Keys Collected", set);
         let ideal_buffer;
         if keys_found < ideal_keys {
             if keys_found < 4 {
@@ -1400,7 +1399,6 @@ pub fn grail_common_sort<T: Sortable>(
             length - buffer_end,
             subarray_len,
         );
-        println!("{:?}; Blocks Built", set);
 
         while length - buffer_end > 2 * subarray_len {
             subarray_len *= 2;
@@ -1431,10 +1429,7 @@ pub fn grail_common_sort<T: Sortable>(
                 scrolling_buffer,
             );
         }
-        println!("{:?}; Combined", set);
         grail_insertion_sort(set, start, buffer_end);
-        println!("{:?}; Final Insertion", set);
         grail_lazy_merge(set, start, buffer_end, length - buffer_end);
-        println!("{:?}; Final Lazy Merge", set);
     }
 }
