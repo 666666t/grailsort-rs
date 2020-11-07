@@ -48,7 +48,7 @@ mod tests {
             verify_sort(&set);
         }
     }
-    
+
     #[test]
     fn bufferless_grail_random_sizes_random_values() {
         for _ in 0..12 {
@@ -76,12 +76,12 @@ mod tests {
                     value: x as isize,
                 })
                 .collect();
-            grail_sort_by(&mut set, len, |a,b| a.value.cmp(&b.value));
+            grail_sort_by(&mut set, len, |a, b| a.value.cmp(&b.value));
             verify_sort_values(&set);
         }
     }
 
-   #[test]
+    #[test]
     fn static_buffer_grail_power_of_2_sizes() {
         for i in 8..20 {
             let mut rng = thread_rng();
@@ -151,7 +151,7 @@ mod tests {
                     value: x as isize,
                 })
                 .collect();
-            grail_sort_by_with_static_buffer(&mut set, len, |a,b| a.value.cmp(&b.value));
+            grail_sort_by_with_static_buffer(&mut set, len, |a, b| a.value.cmp(&b.value));
             verify_sort_values(&set);
         }
     }
@@ -227,7 +227,7 @@ mod tests {
                     value: x as isize,
                 })
                 .collect();
-            grail_sort_by_with_dynamic_buffer(&mut set, len, |a,b| a.value.cmp(&b.value));
+            grail_sort_by_with_dynamic_buffer(&mut set, len, |a, b| a.value.cmp(&b.value));
             verify_sort_values(&set);
         }
     }
