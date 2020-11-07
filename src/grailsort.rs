@@ -59,6 +59,12 @@ pub fn grail_sort<T: Sortable>(set: &mut [T], len: usize) {
 }
 
 #[allow(dead_code)]
+pub fn grail_sort_by<T: Sortable, F: FnMut(&T, &T) -> Ordering>(set: &mut [T], len: usize, cmp: F) {
+    grail_common_sort(set, 0, len, &mut None, cmp);
+}
+
+
+#[allow(dead_code)]
 pub fn grail_sort_with_static_buffer<T: Sortable + Default>(set: &mut [T], len: usize) {
     let mut buffer = vec![T::default(); STATIC_SIZE];
     let mut container = Some(&mut buffer[..]);
@@ -67,12 +73,30 @@ pub fn grail_sort_with_static_buffer<T: Sortable + Default>(set: &mut [T], len: 
 }
 
 #[allow(dead_code)]
+pub fn grail_sort_by_with_static_buffer<T: Sortable + Default, F: FnMut(&T, &T) -> Ordering>(set: &mut [T], len: usize, cmp: F) {
+    let mut buffer = vec![T::default(); STATIC_SIZE];
+    let mut container = Some(&mut buffer[..]);
+
+    grail_common_sort(set, 0, len, &mut container, cmp);
+}
+
+
+#[allow(dead_code)]
 pub fn grail_sort_with_dynamic_buffer<T: Sortable + Default>(set: &mut [T], len: usize) {
     let temp_len = (len as f64).sqrt() as usize;
     let mut buffer = vec![T::default(); temp_len];
     let mut container = Some(&mut buffer[..]);
 
     grail_common_sort(set, 0, len, &mut container, |a, b| a.cmp(&b));
+}
+
+#[allow(dead_code)]
+pub fn grail_sort_by_with_dynamic_buffer<T: Sortable + Default, F: FnMut(&T, &T) -> Ordering>(set: &mut [T], len: usize, cmp: F) {
+    let temp_len = (len as f64).sqrt() as usize;
+    let mut buffer = vec![T::default(); temp_len];
+    let mut container = Some(&mut buffer[..]);
+
+    grail_common_sort(set, 0, len, &mut container, cmp);
 }
 
 fn grail_block_swap<T: Sortable>(set: &mut [T], point_a: usize, point_b: usize, block_len: usize) {
